@@ -138,6 +138,10 @@ app.post('/search', async (req, res) => {
     }
 });
 
+app.use(cors({
+    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/'],
+}));
+
 app.listen(port, async () => {
     try {
         await initPgvector();

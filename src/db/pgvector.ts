@@ -4,7 +4,6 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL, // e.g., postgres://user:pass@localhost:5432/ragdb
 });
-console.log('🧪 DATABASE_URL:', process.env.DATABASE_URL);
 const embedder = new OpenAIEmbeddings();
 
 export async function initPgvector() {
