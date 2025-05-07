@@ -4,8 +4,6 @@ export default defineConfig({
     entry: ['src/index.ts'],
     outDir: 'build',
     target: 'node18',
-    format: ['esm'],
+    format: ['cjs'],
     clean: true,
-    splitting: false,
-    shims: false,
 });
