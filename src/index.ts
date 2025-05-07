@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+dotenv.config();
 import fs from 'fs';
 import path from 'path';
 import { ChatOpenAI } from '@langchain/openai';
@@ -11,10 +12,10 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { extractStringsFromJSON } from './helpers/json-parser';
-import db, { insertEmbedding, searchSimilarEmbeddings, initPgvector } from './db/pgvector';
+import {insertEmbeddings, initPgvector, searchSimilar} from './db/pgvector';
 import { initializeDatabase } from './scripts/init-db';
+import {isValidContent} from "./helpers/valid-content-check";
 
-dotenv.config();
 console.log('🔑 OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
 
 const app = express();
@@ -73,10 +74,14 @@ async function prepareRAGStore() {
                 }
             }
         } else if (ext === '.csv') {
-            const lines = raw.split('\n').slice(1);
-            lines.forEach((line) => {
-                docs.push(new Document({ pageContent: line }));
-            });
+            const lines = raw.split('\n').slice(1); // skip header
+            for (const line of lines) {
+                const parts = line.split(',');
+                const questionText = parts[0]?.trim();
+                if (questionText) {
+                    docs.push(new Document({ pageContent: questionText }));
+                }
+            }
         }
 
         console.log(`✔️ done reading: ${file}`);
@@ -84,13 +89,9 @@ async function prepareRAGStore() {
 
     console.log(`📄 Total raw documents before splitting: ${docs.length}`);
 
-    const docsToUse = docs.slice(0, 1000);
-    searchDocs = docsToUse;
+    const docsToUse = docs.filter((doc) => isValidContent(doc.pageContent)).slice(0, 400).map((doc) => doc.pageContent);
 
-    for (const doc of docsToUse) {
-        const [embedding] = await embedder.embedQuery(doc.pageContent);
-        await insertEmbedding(doc.pageContent, embedding);
-    }
+    await insertEmbeddings(docsToUse);
 
     const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 500, chunkOverlap: 50 });
     console.time('📦 Splitting documents');
@@ -153,12 +154,11 @@ app.post('/search', async (req, res) => {
     if (!input) res.status(400).json({ error: 'Missing input' });
 
     try {
-        const [embedding] = await embedder.embedQuery(input);
-        const results = await searchSimilarEmbeddings(embedding, 5);
-        res.json({ results: results.map(r => ({ pageContent: r })) });
-    } catch (error) {
-        console.error('❌ Error in /search:', error);
-        res.status(500).json({ error: 'Search failed.' });
+        const results = await searchSimilar(input, 15);
+        res.json({ results: results.map(content => ({ pageContent: content })) });
+    } catch (err) {
+        console.error('❌ PGVector search failed:', err);
+        res.status(500).json({ error: 'Search failed' });
     }
 });
 
