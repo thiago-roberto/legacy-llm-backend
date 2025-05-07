@@ -1,0 +1,46 @@
+{
+  "DOI": "10.5281/zenodo.4543776",
+  "abstract": "Suicide is the 10th leading cause of death in the U.S (1999-2019). However, predicting when someone will attempt or complete suicide has been nearly impossible. In the modern world, many individuals suffering from mental illness seek emotional support and advice on well-known and easily-accessible social media platforms such as Reddit. \u00a0 While prior artificial intelligence research has demonstrated the ability to extract valuable information from social media on suicidal thoughts and behaviors, these efforts have not considered both severity and temporality of risk. The insights made possible by access to such data have enormous clinical potential - most dramatically envisioned as a trigger to employ timely and targeted interventions (i.e. voluntary and involuntary psychiatric hospitalization) to save lives. In this work, we address this knowledge gap by developing natural datasets of users experiencing suicide-related ideations, suicide-related behaviors or suicide attempt (https://zenodo.org/record/2667859#.YCwdTR1OlQI) manifested through their communication on r/SuicideWatch and associated mental health subreddits. Through a widely recognized questionnaire to assess suicide risk severity, The Columbia Suicide Severity Rating Scale, the domain experts in the study annotated 448 users with following labels: Supportive (new add to C-SSRS and specific to social media), Suicide Ideation, Suicide Behavior, Suicide Attempt. High standards in annotation were maintained with substantial inter-rater agreement of 0.76.",
+  "author": [
+    {
+      "family": "Gaur",
+      "given": "Manas"
+    },
+    {
+      "family": "Aribandi"
+    },
+    {
+      "family": "Alambo"
+    },
+    {
+      "family": "Kursuncu"
+    },
+    {
+      "family": "Thirunarayan"
+    },
+    {
+      "family": "Beich"
+    },
+    {
+      "family": "Pathak"
+    },
+    {
+      "family": "Sheth"
+    }
+  ],
+  "id": "4543776",
+  "issued": {
+    "date-parts": [
+      [
+        "2021",
+        "02",
+        "16"
+      ]
+    ]
+  },
+  "language": "eng",
+  "publisher": "Zenodo",
+  "title": "Characterization of Time-variant and Time-invariant Assessment of Suicidality on Reddit using C-SSRS",
+  "type": "dataset",
+  "version": "Version 2 (Version 1: https://zenodo.org/record/2667859#.YCwdTR1OlQI (no post-level annotation))"
+}
