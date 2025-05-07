@@ -21,7 +21,8 @@
     "langchain": "^0.3.24",
     "openai": "^4.97.0",
     "pg": "^8.15.6",
-    "sqlite-vss": "^0.1.2"
+    "sqlite-vss": "^0.1.2",
+    "tsx": "^4.19.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
