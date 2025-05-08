@@ -23,7 +23,6 @@ app.use(express.json());
 const port = 4000;
 
 let vectorStore: MemoryVectorStore;
-let searchDocs: Document[] = [];
 const embedder = new OpenAIEmbeddings();
 
 async function prepareRAGStore() {
