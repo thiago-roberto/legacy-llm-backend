@@ -2,7 +2,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-dotenv.config();
 import fs from 'fs';
 import path from 'path';
 import { ChatOpenAI } from '@langchain/openai';
@@ -15,9 +14,11 @@ import { extractStringsFromJSON } from './helpers/json-parser';
 import {insertEmbeddings, initPgvector, searchSimilar} from './db/pgvector';
 import { initializeDatabase } from './scripts/init-db';
 import {isValidContent} from "./helpers/valid-content-check";
-
+dotenv.config();
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/'],
+}));
 app.use(express.json());
 const port = 4000;
 
@@ -137,10 +138,6 @@ app.post('/search', async (req, res) => {
         res.status(500).json({ error: 'Search failed' });
     }
 });
-
-app.use(cors({
-    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/'],
-}));
 
 app.listen(port, async () => {
     try {
