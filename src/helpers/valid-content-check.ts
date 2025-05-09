@@ -3,7 +3,7 @@ export const isValidContent = (text: string) => {
 
     if (/^\s*[\d\s.,;:-]+\s*$/.test(text)) return false;
 
-    if (text.length < 10 || text.length > 1000) return false;
+    if (text.length < 10 || text.length > 1500) return false;
 
     const alphaRatio = (text.replace(/[^a-z]/gi, '').length || 0) / text.length;
     if (alphaRatio < 0.4) return false;
