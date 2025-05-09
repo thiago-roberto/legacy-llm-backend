@@ -13,21 +13,22 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { extractStringsFromJSON } from './helpers/json-parser';
 import {insertEmbeddings, initPgvector, searchSimilar} from './db/pgvector';
 import { initializeDatabase } from './scripts/init-db';
-import {isValidContent} from "./helpers/valid-content-check";
+import { isValidContent } from './helpers/valid-content-check';
+import { sanitizeInput } from './helpers/sanitize-input';
 dotenv.config();
+
 const app = express();
-app.use(cors({
-    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/'],
-}));
-app.use(express.json());
 const port = 4000;
+
+app.use(cors({ origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/', 'http://localhost:3000'] }));
+app.use(express.json());
 
 let vectorStore: MemoryVectorStore;
 const embedder = new OpenAIEmbeddings();
 
 async function prepareRAGStore() {
+    console.log(`📚 [${new Date().toISOString()}] Starting RAG store preparation...`);
     const docs: Document[] = [];
-
     const filePaths = [
         'src/datasets/20200325_counsel_chat.csv',
         'src/datasets/counselchat-data.csv',
@@ -37,6 +38,7 @@ async function prepareRAGStore() {
 
     for (const file of filePaths) {
         const fullPath = path.resolve(file);
+        console.log(`🔍 [${new Date().toISOString()}] Loading file: ${fullPath}`);
         const ext = path.extname(file);
         const raw = fs.readFileSync(fullPath, 'utf-8');
 
@@ -72,7 +74,7 @@ async function prepareRAGStore() {
                 }
             }
         } else if (ext === '.csv') {
-            const lines = raw.split('\n').slice(1); // skip header
+            const lines = raw.split('\n').slice(1);
             for (const line of lines) {
                 const parts = line.split(',');
                 const questionText = parts[0]?.trim();
@@ -83,18 +85,29 @@ async function prepareRAGStore() {
         }
     }
 
+    console.log(`✂️ [${new Date().toISOString()}] Filtering and splitting documents...`);
+    const docsToUse = docs
+        .filter((doc) => isValidContent(doc.pageContent))
+        .slice(0, 400)
+        .map((doc) => doc.pageContent);
 
-    const docsToUse = docs.filter((doc) => isValidContent(doc.pageContent)).slice(0, 400).map((doc) => doc.pageContent);
-
+    console.log(`⚙️ [${new Date().toISOString()}] Inserting embeddings into vector store...`);
     await insertEmbeddings(docsToUse);
 
     const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 500, chunkOverlap: 50 });
     const splitDocs = await splitter.splitDocuments(docsToUse);
+
+    console.log(`🔗 [${new Date().toISOString()}] Building in-memory MemoryVectorStore...`);
     vectorStore = await MemoryVectorStore.fromDocuments(splitDocs, embedder);
+
+    console.log(`✅ [${new Date().toISOString()}] RAG store preparation complete.`);
 }
 
 app.post('/ask', async (req, res) => {
-    const input = req.body.input;
+    const rawInput = req.body.input as string;
+    const input = sanitizeInput(rawInput).trim();
+    console.log(`💬 [${new Date().toISOString()}] Received /ask request with input: ${input}`);
+
     const model = new ChatOpenAI({
         temperature: 0.7,
         openAIApiKey: process.env.OPENAI_API_KEY,
@@ -102,23 +115,20 @@ app.post('/ask', async (req, res) => {
 
     try {
         const relevantDocs = await vectorStore.similaritySearch(input, 3);
+        console.log(`🔍 [${new Date().toISOString()}] Retrieved ${relevantDocs.length} relevant docs.`);
 
         const context = relevantDocs.map((doc) => doc.pageContent).join('\n');
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-
-        const response = await model.call([
+        const callPromise = model.call([
             new SystemMessage('You are a mental health assistant. Use the provided context to help answer the question.'),
             new HumanMessage(`Context:\n${context}\n\nUser question: ${input}`),
-        ], { signal: controller.signal });
+        ]);
 
-        clearTimeout(timeout);
-
+        const response = await withTimeout(callPromise, 10000);
+        console.log(`✅ [${new Date().toISOString()}] Model responded successfully.`);
         res.json({ result: response.text });
     } catch (err: any) {
-        clearTimeout(undefined);
-        if (err.name === 'AbortError') {
+        console.error(`❌ [${new Date().toISOString()}] Error in /ask:`, err);
+        if (err.message === 'Timeout') {
             res.status(504).json({ result: 'The model took too long to respond.' });
         } else {
             res.status(500).json({ result: 'Something went wrong.' });
@@ -127,22 +137,37 @@ app.post('/ask', async (req, res) => {
 });
 
 app.post('/search', async (req, res) => {
-    const input = req.body.input;
-    if (!input) res.status(400).json({ error: 'Missing input' });
+    const rawInput = req.body.input as string;
+    const input = sanitizeInput(rawInput).trim();
+    console.log(`🔎 [${new Date().toISOString()}] Received /search request with input: ${input}`);
+
+    if (!input || input.trim().length === 0 || input.trim().length > 500) {
+        console.warn(`⚠️  [${new Date().toISOString()}] Invalid input in /search.`);
+        res.status(400).json({ error: 'Invalid input' });
+        return;
+    }
 
     try {
         const results = await searchSimilar(input, 15);
-        res.json({ results: results.map(content => ({ pageContent: content })) });
+        console.log(`📈 [${new Date().toISOString()}] Returning ${results.length} search results.`);
+        res.json({ results: results.map((content) => ({ pageContent: content })) });
     } catch (err) {
+        console.error(`❌ [${new Date().toISOString()}] Error in /search:`, err);
         res.status(500).json({ error: 'Search failed' });
     }
 });
 
+// Start server and initialize resources
 app.listen(port, async () => {
+    console.log(`🚀 Server listening on port ${port}`);
     try {
+        console.log(`Initializing pgvector...`);
         await initPgvector();
+        console.log(`🗄️  [${new Date().toISOString()}] Initializing database...`);
         await initializeDatabase();
+
         await prepareRAGStore();
     } catch (err) {
+        console.error(`🔥 Startup error:`, err);
     }
 });
