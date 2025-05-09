@@ -15,6 +15,7 @@ import {insertEmbeddings, initPgvector, searchSimilar} from './db/pgvector';
 import { initializeDatabase } from './scripts/init-db';
 import { isValidContent } from './helpers/valid-content-check';
 import { sanitizeInput } from './helpers/sanitize-input';
+import {withTimeout} from "./helpers/timeout";
 dotenv.config();
 
 const app = express();
