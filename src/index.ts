@@ -16,6 +16,8 @@ import { initializeDatabase } from './scripts/init-db';
 import { isValidContent } from './helpers/valid-content-check';
 import { sanitizeInput } from './helpers/sanitize-input';
 import {withTimeout} from "./helpers/timeout";
+import {docAssistantPrompt} from "./prompts/doc-assistant-prompt";
+import {buildHumanPrompt} from "./prompts/build-human-prompt";
 dotenv.config();
 
 const app = express();
@@ -120,8 +122,8 @@ app.post('/ask', async (req, res) => {
 
         const context = relevantDocs.map((doc) => doc.pageContent).join('\n');
         const callPromise = model.call([
-            new SystemMessage('You are a mental health assistant. Use the provided context to help answer the question.'),
-            new HumanMessage(`Context:\n${context}\n\nUser question: ${input}`),
+            new SystemMessage(docAssistantPrompt),
+            new HumanMessage(buildHumanPrompt(context, input)),
         ]);
 
         const response = await withTimeout(callPromise, 10000);
