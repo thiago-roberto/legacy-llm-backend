@@ -18,7 +18,7 @@ const app = express();
 const port = 4000;
 
 app.use(cors({
-    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app/']
+    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app']
 }));
 app.use(express.json());
 
