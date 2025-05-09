@@ -128,6 +128,5 @@ export async function prepareRAGStore() {
 
         await insertEmbeddingsBulk(textBatch, metaBatch, vectors);
         insertedCount += textBatch.length;
-        console.log(`✅ Inserted ${textBatch.length} docs in this batch; total so far: ${insertedCount}`);
     }
 }
