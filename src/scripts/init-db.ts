@@ -9,6 +9,7 @@ export async function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS documents (
                                                      id SERIAL PRIMARY KEY,
                                                      content TEXT,
+                                                     metadata JSONB, 
                                                      embedding VECTOR
             );
         `);

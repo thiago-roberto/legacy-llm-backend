@@ -22,50 +22,55 @@ export async function initPgvector() {
  */
 export async function insertEmbeddingsBulk(
     texts: string[],
+    metadatas: object[],
     vectors: number[][]
 ) {
     const client = await pool.connect();
     try {
-        // Build parameterized VALUES clauses
-        const params: string[] = [];
-        const valueClauses = texts.map((_, idx) => {
-            const textParamIndex = params.length + 1;
+        // We'll build a list of parameter placeholders and a flat params array
+        const valueClauses: string[] = [];
+        const params: any[] = [];
+
+        texts.forEach((_, idx) => {
+            const contentIdx = params.length + 1;
             params.push(texts[idx]);
-            const vecLit = `[${vectors[idx].join(',')}]`;
-            const vecParamIndex = params.length + 1;
+
+            const vec = vectors[idx];
+            const vecLit = `[${vec.join(',')}]`;
+            const vectorIdx = params.length + 1;
             params.push(vecLit);
-            return `($${textParamIndex}, $${vecParamIndex}::vector)`;
-        }).join(',');
+
+            const metaIdx = params.length + 1;
+            params.push(metadatas[idx]);
+
+            valueClauses.push(`($${contentIdx}, $${vectorIdx}::vector, $${metaIdx}::jsonb)`);
+        });
 
         const sql = `
-      INSERT INTO documents (content, embedding)
-      VALUES ${valueClauses}
-      ON CONFLICT DO NOTHING;
-    `;
+            INSERT INTO documents (content, embedding, metadata)
+            VALUES ${valueClauses.join(',')}
+                ON CONFLICT DO NOTHING;
+        `;
         await client.query(sql, params);
     } finally {
         client.release();
     }
 }
 
-/**
- * Perform similarity search over stored embeddings.
- */
 export async function searchSimilar(
     input: string,
     topK = 5
-): Promise<string[]> {
-    const embeddingArr = await embedder.embedQuery(input);
-    const result = await pool.query(
-        `
-      SELECT content
-      FROM documents
-      ORDER BY embedding <-> $1
-      LIMIT $2
-    `,
-        [embeddingArr, topK]
+): Promise<{ content: string; metadata: any }[]> {
+    const embedding = await embedder.embedQuery(input);
+    const vecLit = `[${embedding.join(',')}]`;
+    const { rows } = await pool.query(
+        `SELECT content, metadata
+     FROM documents
+     ORDER BY embedding <-> $1::vector
+     LIMIT $2`,
+        [vecLit, topK]
     );
-    return result.rows.map(row => row.content);
+    return rows;
 }
 
 export default pool;
