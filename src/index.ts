@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -11,6 +12,7 @@ import { withTimeout } from './helpers/timeout';
 import { docAssistantPrompt } from './prompts/doc-assistant-prompt';
 import { buildHumanPrompt } from './prompts/build-human-prompt';
 import {prepareRAGStore} from "./scripts/prepare-rag-store";
+import {mmrSearch} from "./db/retriever";
 
 dotenv.config();
 
@@ -18,7 +20,7 @@ const app = express();
 const port = 4000;
 
 app.use(cors({
-    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app']
+    origin: ['https://aquamarine-cajeta-dc7dc7.netlify.app', 'http://localhost:3000'],
 }));
 app.use(express.json());
 
@@ -30,7 +32,7 @@ app.post('/ask', async (req, res) => {
     }
     const model = new ChatOpenAI({ temperature: 0.7, openAIApiKey: process.env.OPENAI_API_KEY });
     try {
-        const relevantDocs = await searchSimilar(input, 5);
+        const relevantDocs = await mmrSearch(input);
         const sources = relevantDocs.map(r => r.metadata.name);
         const context = relevantDocs
             .map(r => `[${r.metadata.name}] ${r.content}`)
@@ -63,8 +65,8 @@ app.post('/search', async (req, res) => {
         res.status(400).json({ error: 'Invalid input' });
     }
     try {
-        const results = await searchSimilar(input, 15);
-        res.json({ results: results.map(r => ({ pageContent: r })), sources: ['search_index'] });
+        const results = await mmrSearch(input);
+        res.json({ results: results.map(r => ({ pageContent: r.pageContent, source: r.metadata.name }))});
     } catch (err) {
         console.log(err);
         res.status(500).json({ error: 'Search failed' });
