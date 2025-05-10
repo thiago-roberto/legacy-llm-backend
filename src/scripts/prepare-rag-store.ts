@@ -10,7 +10,7 @@ import {log} from "../helpers/timestamp-log";
 import { Document } from '@langchain/core/documents';
 
 
-const MAX_DOCS   = Number(process.env.MAX_DOCS  || 25000);
+const MAX_DOCS   = Number(process.env.MAX_DOCS  || 12000);
 const BATCH_SIZE = Number(process.env.BATCH_SIZE || 1000);
 const embedder   = new OpenAIEmbeddings();
 
